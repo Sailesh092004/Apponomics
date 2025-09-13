@@ -78,8 +78,23 @@ def evaluate_clustering(model, X):
     return {"silhouette_score": float(score)}
 
 
-def plot_pca_clusters(model, X, features, output_dir):
+def plot_pca_clusters(model, X, features, output_dir, n_init: int = 10):
     """Create a 2D PCA scatter plot of clustered data.
+
+    Parameters
+    ----------
+    model:
+        Fitted clustering model providing ``predict`` or ``fit_predict``.
+    X:
+        Feature matrix used for clustering.
+    features:
+        Optional list of column names from ``X`` to include in the plot.
+    output_dir:
+        Directory where the PCA plot image will be saved.
+    n_init:
+        Number of initializations for clustering algorithms such as
+        :class:`~sklearn.cluster.KMeans`. This avoids relying on the
+        ``"auto"`` default introduced in newer versions of scikit-learn.
 
     The function attempts to import the required optional dependencies at
     runtime. If they are not available a message is printed and plotting is
@@ -97,6 +112,11 @@ def plot_pca_clusters(model, X, features, output_dir):
     if hasattr(model, "predict"):
         labels = model.predict(data)
     else:  # pragma: no cover - models without predict
+        if hasattr(model, "set_params"):
+            try:
+                model.set_params(n_init=n_init)
+            except Exception:
+                pass
         labels = model.fit_predict(data)
 
     pca = PCA(n_components=2)
@@ -152,6 +172,15 @@ def main():
     parser.add_argument("--output", default="evaluation_output", help="Directory to save metrics and plots")
     parser.add_argument("--features", nargs="+",
                         help="Feature columns to use. If omitted numeric columns are inferred")
+    parser.add_argument(
+        "--n-init",
+        type=int,
+        default=10,
+        help=(
+            "Number of initializations for clustering algorithms when generating "
+            "PCA cluster plots"
+        ),
+    )
     args = parser.parse_args()
 
     model = load_model(args.model)
@@ -182,7 +211,7 @@ def main():
     create_shap_plots(model, data_for_eval, args.output)
 
     if args.task == "clustering":
-        plot_pca_clusters(model, data_for_eval, features, args.output)
+        plot_pca_clusters(model, data_for_eval, features, args.output, n_init=args.n_init)
 
     # Print metrics to stdout for convenience
     print(json.dumps(metrics, indent=2))
