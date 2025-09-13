@@ -1,2 +1,4 @@
 models/
 !models/.gitkeep
+__pycache__/
+*.db
