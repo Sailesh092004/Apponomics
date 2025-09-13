@@ -2,6 +2,19 @@ import argparse
 import json
 import math
 import os
+from dataclasses import dataclass
+
+
+@dataclass
+class PlotConfig:
+    """Configuration for plot styling."""
+
+    palette: str = "tab10"
+    bins: int = 10
+
+
+# Default plot configuration used by plotting functions
+CFG = PlotConfig()
 
 
 def load_model(model_path):
@@ -78,7 +91,7 @@ def evaluate_clustering(model, X):
     return {"silhouette_score": float(score)}
 
 
-def plot_pca_clusters(model, X, features, output_dir):
+def plot_pca_clusters(model, X, features, output_dir, cfg: PlotConfig = CFG):
     """Create a 2D PCA scatter plot of clustered data.
 
     The function attempts to import the required optional dependencies at
@@ -87,6 +100,7 @@ def plot_pca_clusters(model, X, features, output_dir):
     """
     try:
         import matplotlib.pyplot as plt
+        import seaborn as sns
         from sklearn.decomposition import PCA
     except Exception as exc:  # pragma: no cover - best effort
         print(f"PCA plotting skipped: {exc}")
@@ -102,13 +116,72 @@ def plot_pca_clusters(model, X, features, output_dir):
     pca = PCA(n_components=2)
     components = pca.fit_transform(data)
 
-    plt.scatter(components[:, 0], components[:, 1], c=labels, cmap="tab10")
+    sns.scatterplot(
+        x=components[:, 0],
+        y=components[:, 1],
+        hue=labels,
+        palette=cfg.palette,
+        legend=False,
+    )
     plt.xlabel("PC1")
     plt.ylabel("PC2")
     plt.title("PCA Cluster Plot")
     os.makedirs(output_dir, exist_ok=True)
     plt.tight_layout()
     plt.savefig(os.path.join(output_dir, "pca_clusters.png"))
+    plt.close()
+
+
+def plot_spend_cap_distribution(df, output_dir, cfg: PlotConfig = CFG):
+    """Plot a histogram of spend cap values."""
+    try:
+        import matplotlib.pyplot as plt
+        import seaborn as sns
+    except Exception as exc:  # pragma: no cover - best effort
+        print(f"Spend cap distribution plot skipped: {exc}")
+        return
+
+    if "spend_cap" not in df.columns:
+        print("Spend cap distribution plot skipped: 'spend_cap' column missing")
+        return
+
+    sns.histplot(data=df, x="spend_cap", bins=cfg.bins, palette=cfg.palette)
+    plt.xlabel("Spend Cap")
+    plt.ylabel("Count")
+    plt.title("Spend Cap Distribution")
+    os.makedirs(output_dir, exist_ok=True)
+    plt.tight_layout()
+    plt.savefig(os.path.join(output_dir, "spend_cap_distribution.png"))
+    plt.close()
+
+
+def plot_tier_counts(df, output_dir, cfg: PlotConfig = CFG):
+    """Plot the counts of a tier column if present."""
+    try:
+        import matplotlib.pyplot as plt
+        import seaborn as sns
+    except Exception as exc:  # pragma: no cover - best effort
+        print(f"Tier count plot skipped: {exc}")
+        return
+
+    tier_col = None
+    for candidate in ("tier", "tier_label"):
+        if candidate in df.columns:
+            tier_col = candidate
+            break
+    if tier_col is None:
+        print("Tier count plot skipped: no tier column found")
+        return
+
+    counts = df[tier_col].value_counts().reset_index()
+    counts.columns = [tier_col, "count"]
+    sns.barplot(data=counts, x=tier_col, y="count", palette=cfg.palette)
+    plt.xlabel(tier_col.replace("_", " ").title())
+    plt.ylabel("Count")
+    plt.title("Tier Counts")
+    os.makedirs(output_dir, exist_ok=True)
+    plt.tight_layout()
+    plt.savefig(os.path.join(output_dir, "tier_counts.png"))
     plt.close()
 
 
@@ -181,8 +254,12 @@ def main():
     # SHAP plots for feature importances
     create_shap_plots(model, data_for_eval, args.output)
 
+    # Additional exploratory plots honoring the plot configuration
+    plot_spend_cap_distribution(X, args.output, CFG)
+    plot_tier_counts(X, args.output, CFG)
+
     if args.task == "clustering":
-        plot_pca_clusters(model, data_for_eval, features, args.output)
+        plot_pca_clusters(model, data_for_eval, features, args.output, CFG)
 
     # Print metrics to stdout for convenience
     print(json.dumps(metrics, indent=2))
