@@ -165,7 +165,7 @@ def main():
     if args.task in ("classification", "regression") and y is None:
         raise ValueError("Target column must be provided for supervised tasks")
 
-    data_for_eval = X[features] if args.task == "clustering" else X
+    data_for_eval = X[features]
 
     if args.task == "classification":
         metrics = evaluate_classification(model, data_for_eval, y)
