@@ -1,16 +1,22 @@
 # Apponomics
 
-Utility scripts for working with mobile app usage data. The project currently
-includes placeholders for data generation and model training as well as a
+Utility scripts for working with mobile app usage data. The project now
+provides a basic data generation and model training pipeline alongside a
 functional evaluation script and Streamlit demo app.
 
 ## Scripts
 
-- `scripts/generate_data.py` – **TODO:** implement data generation logic for
-  creating training datasets.
-- `scripts/train.py` – **TODO:** implement model training routine.
+- `scripts/generate_data.py` – create synthetic datasets for experimentation.
+- `scripts/train.py` – train classification, regression or clustering models.
 - `scripts/evaluate.py` – evaluate a serialized model on a dataset and output
   metrics, SHAP plots, and optional clustering visuals.
+
+Example usage for data generation and training:
+
+```bash
+python scripts/generate_data.py --rows 1000 --output data.csv
+python scripts/train.py --data data.csv --task classification --target churn --model model.pkl
+```
 
 Example usage for the evaluation script:
 
