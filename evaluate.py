@@ -78,6 +78,40 @@ def evaluate_clustering(model, X):
     return {"silhouette_score": float(score)}
 
 
+def plot_pca_clusters(model, X, features, output_dir):
+    """Create a 2D PCA scatter plot of clustered data.
+
+    The function attempts to import the required optional dependencies at
+    runtime. If they are not available a message is printed and plotting is
+    skipped, allowing the rest of the evaluation to proceed without error.
+    """
+    try:
+        import matplotlib.pyplot as plt
+        from sklearn.decomposition import PCA
+    except Exception as exc:  # pragma: no cover - best effort
+        print(f"PCA plotting skipped: {exc}")
+        return
+
+    data = X[features] if features else X
+
+    if hasattr(model, "predict"):
+        labels = model.predict(data)
+    else:  # pragma: no cover - models without predict
+        labels = model.fit_predict(data)
+
+    pca = PCA(n_components=2)
+    components = pca.fit_transform(data)
+
+    plt.scatter(components[:, 0], components[:, 1], c=labels, cmap="tab10")
+    plt.xlabel("PC1")
+    plt.ylabel("PC2")
+    plt.title("PCA Cluster Plot")
+    os.makedirs(output_dir, exist_ok=True)
+    plt.tight_layout()
+    plt.savefig(os.path.join(output_dir, "pca_clusters.png"))
+    plt.close()
+
+
 def create_shap_plots(model, X, output_dir):
     """Generate SHAP-based feature importance plots.
 
@@ -116,27 +150,39 @@ def main():
                         help="Type of machine learning task")
     parser.add_argument("--target", help="Target column name for supervised tasks")
     parser.add_argument("--output", default="evaluation_output", help="Directory to save metrics and plots")
+    parser.add_argument("--features", nargs="+",
+                        help="Feature columns to use. If omitted numeric columns are inferred")
     args = parser.parse_args()
 
     model = load_model(args.model)
     X, y = load_data(args.data, args.target)
 
+    if args.features:
+        features = args.features
+    else:
+        features = X.select_dtypes(include="number").columns.tolist()
+
     if args.task in ("classification", "regression") and y is None:
         raise ValueError("Target column must be provided for supervised tasks")
 
+    data_for_eval = X[features] if args.task == "clustering" else X
+
     if args.task == "classification":
-        metrics = evaluate_classification(model, X, y)
+        metrics = evaluate_classification(model, data_for_eval, y)
     elif args.task == "regression":
-        metrics = evaluate_regression(model, X, y)
+        metrics = evaluate_regression(model, data_for_eval, y)
     else:
-        metrics = evaluate_clustering(model, X)
+        metrics = evaluate_clustering(model, data_for_eval)
 
     os.makedirs(args.output, exist_ok=True)
     with open(os.path.join(args.output, "metrics.json"), "w") as f:
         json.dump(metrics, f, indent=2)
 
     # SHAP plots for feature importances
-    create_shap_plots(model, X, args.output)
+    create_shap_plots(model, data_for_eval, args.output)
+
+    if args.task == "clustering":
+        plot_pca_clusters(model, data_for_eval, features, args.output)
 
     # Print metrics to stdout for convenience
     print(json.dumps(metrics, indent=2))
