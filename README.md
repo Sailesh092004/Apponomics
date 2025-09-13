@@ -1,39 +1,9 @@
 # Apponomics
 
-Utility script for evaluating trained machine learning models.
+Utility scripts for evaluating trained machine learning models and preparing a
+database from the provided CSV datasets.
 
-## evaluate.py
+## Documentation
 
-`evaluate.py` loads a serialized model and test dataset, computes task-specific metrics (accuracy, F1, confusion matrix, MAE, RMSE, AUC-ROC, silhouette score) and generates SHAP-based feature importance plots.
-
-Example usage:
-
-```bash
-python evaluate.py --model path/to/model.pkl --data path/to/test.csv --task classification --target label
-```
-
-For clustering tasks you can optionally specify which feature columns to use
-for evaluation and PCA cluster visualisation. If omitted, all numeric columns
-are used automatically.
-
-```bash
-python evaluate.py --model path/to/model.pkl --data path/to/test.csv --task clustering --features spend sessions
-```
-
-The script writes metrics to `evaluation_output/metrics.json` and saves SHAP
-plots (and clustering plots when applicable) in the same directory.
-
-## build_database.py
-
-`build_database.py` loads the CSV datasets in the repository into a SQLite
-database. This is useful for experiments that require SQL queries rather than
-raw CSV access.
-
-Example usage:
-
-```bash
-python build_database.py --db apponomics.db
-```
-
-This will create (or overwrite) `apponomics.db` with three tables:
-`user_app_usage`, `telecom_metrics`, and `user_app_tiers`.
+- [Model evaluation](docs/evaluate.md)
+- [Build the SQLite database](docs/build_database.md)
