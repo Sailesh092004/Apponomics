@@ -142,6 +142,47 @@ def create_shap_plots(model, X, output_dir):
         print(f"SHAP analysis skipped: {exc}")
 
 
+def plot_spend_cap_distribution(df, output_dir):
+    """Plot the distribution of spend-to-cap ratios.
+
+    The function expects ``df`` to contain ``spend`` and ``cap`` columns.
+    Rows where ``cap`` equals zero are excluded to avoid division by zero.
+    A warning is printed when such rows are dropped.
+    """
+    try:
+        import numpy as np
+        import matplotlib.pyplot as plt
+    except Exception as exc:  # pragma: no cover - best effort
+        print(f"Spend/cap plotting skipped: {exc}")
+        return
+
+    required = {"spend", "cap"}
+    if not required.issubset(df.columns):
+        print("Spend/cap plotting skipped: required columns missing")
+        return
+
+    spend = df["spend"].to_numpy()
+    cap = df["cap"].to_numpy()
+    zero_cap = cap == 0
+    if zero_cap.any():
+        print(f"Warning: {zero_cap.sum()} rows have zero cap and were excluded")
+
+    ratios = np.divide(spend, cap, out=np.zeros_like(spend, dtype=float), where=~zero_cap)
+    ratios = ratios[~zero_cap]
+    if ratios.size == 0:
+        print("Spend/cap plotting skipped: no valid ratios")
+        return
+
+    plt.hist(ratios, bins=30)
+    plt.xlabel("Spend/Cap ratio")
+    plt.ylabel("Frequency")
+    plt.title("Spend to Cap Distribution")
+    os.makedirs(output_dir, exist_ok=True)
+    plt.tight_layout()
+    plt.savefig(os.path.join(output_dir, "spend_cap_distribution.png"))
+    plt.close()
+
+
 def main():
     parser = argparse.ArgumentParser(description="Evaluate a trained model on test data.")
     parser.add_argument("--model", required=True, help="Path to a serialized model (joblib or pickle)")
@@ -180,6 +221,9 @@ def main():
 
     # SHAP plots for feature importances
     create_shap_plots(model, data_for_eval, args.output)
+
+    # Spend/cap distribution plot when relevant columns exist
+    plot_spend_cap_distribution(data_for_eval, args.output)
 
     if args.task == "clustering":
         plot_pca_clusters(model, data_for_eval, features, args.output)
