@@ -13,9 +13,9 @@ def main(db_path: str) -> None:
     conn = sqlite3.connect(db_path)
     root = Path(__file__).resolve().parent
     datasets = {
-        "master_user_app_usage_categorized.csv": "user_app_usage",
-        "sy4836_17576562278687568.csv": "telecom_metrics",
-        "user_app_tiers.csv": "user_app_tiers",
+        "data/master_user_app_usage_categorized.csv": "user_app_usage",
+        "data/sy4836_17576562278687568.csv": "telecom_metrics",
+        "data/user_app_tiers.csv": "user_app_tiers",
     }
     for filename, table in datasets.items():
         load_csv_to_sqlite(root / filename, conn, table)
